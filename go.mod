@@ -1,4 +1,4 @@
-module github.com/Naveen-kumar525/go-links
+module github.com/chennupati97/go-links
 
 go 1.25.0
 

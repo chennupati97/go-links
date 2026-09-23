@@ -1,79 +1,72 @@
-# Go Links
+# JumpAlias
 
-## Overview
+## What it is
 
-Go Links is a simple internal URL shortener that allows users to create memorable shortcuts for frequently used URLs. Users can create shortcuts, browse existing links, and access the destination URL through a redirect endpoint.
+JumpAlias is a small internal tool for mapping short aliases to full URLs.
+Teams register an alias once, then jump to the destination through a redirect path.
 
-## Features
+## What you can do
 
-- Create a Go Link
-- List all Go Links
-- Redirect using shortcut
-- Input validation
-- Duplicate slug detection
-- SQLite persistence
+- Register a new alias → destination mapping
+- Browse every registered shortcut
+- Follow `/j/:alias` to land on the destination
+- Reject invalid aliases and non-http(s) destinations
+- Block duplicate aliases
+- Persist data in SQLite
 
-## Tech Stack
+## Stack
 
-**Backend**
-- Go
-- Gin
-- GORM
-- SQLite
+| Layer | Tools |
+|-------|--------|
+| API | Go, Gin, GORM, SQLite |
+| UI | React, TypeScript, Vite, Axios |
 
-**Frontend**
-- React
-- TypeScript
-- Vite
-- Axios
-
-## Project Structure
+## Layout
 
 ```text
-cmd/server/              Application entrypoint (starts DI)
+cmd/server/           process entry (bootstraps the app)
 internal/
-  di/                    Single DI composition root (wires dependencies)
-  router/                HTTP routing and middleware configuration
-  handler/               HTTP adapters (Gin handlers + response DTOs)
-  service/               Business rules (use-cases)
-  repository/            Persistence port + GORM adapter
-  model/                 Domain entities
-  validation/            Input normalization and validation
-frontend/                React + TypeScript UI
-README.md
+  di/                 settings + dependency wiring
+  router/             HTTP engine and route mount
+  handler/            request/response adapters
+  service/            alias business rules
+  repository/         SQLite persistence
+  model/              Shortcut entity
+  validation/         alias + destination checks
+frontend/             React UI
 ```
 
-Dependency flow:
+Flow:
 
 ```text
-Handler → Service → Repository → Database
-                ↑
-            di wires these
-                ↓
-             router
+ShortcutAPI → AliasManager → ShortcutStore → SQLite
+         ↑
+      di.Bootstrap
+         ↓
+     BuildEngine
 ```
 
-## Prerequisites
+## Requirements
 
 - Go 1.23+
 - Node.js 20+
 - npm
 
-## Running the Backend
+## Start the API
 
 ```bash
 go mod tidy
 go run ./cmd/server
 ```
 
-Runs on [http://localhost:8080](http://localhost:8080).
+Listens on [http://localhost:8080](http://localhost:8080).
 
-Optional environment variables:
+Environment knobs:
 
-- `PORT` — server port (default `8080`)
-- `DB_PATH` — SQLite file path (default `golinks.db`)
+- `LISTEN_PORT` — listen port (default `8080`)
+- `SQLITE_FILE` — SQLite file path (default `jumpalias.db`)
 
-## Running the Frontend
+## Start the UI
 
 ```bash
 cd frontend
@@ -82,32 +75,42 @@ npm install
 npm run dev
 ```
 
-Runs on [http://localhost:5173](http://localhost:5173).
+UI: [http://localhost:5173](http://localhost:5173).
 
-The frontend API base URL is configured with `VITE_API_BASE_URL` (defaults to `http://localhost:8080`).
+Point the UI at the API with `VITE_BACKEND_ORIGIN` (default `http://localhost:8080`).
 
-## API Endpoints
+## HTTP surface
 
-| Method | Endpoint     | Description                 |
-|--------|--------------|-----------------------------|
-| POST   | `/api/links` | Create a Go Link            |
-| GET    | `/api/links` | List Go Links               |
-| GET    | `/go/:slug`  | Redirect to destination URL |
+| Method | Path | Behavior |
+|--------|------|----------|
+| GET | `/ready` | Liveness probe |
+| POST | `/api/shortcuts` | Register a shortcut (`alias`, `destination`) |
+| GET | `/api/shortcuts` | List shortcuts |
+| GET | `/j/:alias` | Redirect to destination |
 
-## Assumptions
+Example create body:
 
-- Slugs are unique.
-- URLs must be valid (`http` or `https`).
-- SQLite is used for simplicity.
-- Authentication is intentionally omitted.
-- The frontend communicates with the backend running locally.
+```json
+{
+  "alias": "design-system",
+  "destination": "https://example.com/design"
+}
+```
 
-## Future Improvements
+Successful create responses include `id`, `alias`, `destination`, and `registeredAt`.
 
-- Search and filter shortcuts
-- Edit and delete existing links
-- Pagination for large datasets
-- Authentication and authorization
-- Docker support
-- Unit and integration tests
-- Configurable backend URL via environment variables (frontend already uses `VITE_API_BASE_URL`)
+## Notes
+
+- Aliases are unique and stored lowercase.
+- Destinations must be absolute `http` or `https` URLs.
+- Auth is out of scope for this version.
+- Local UI expects a local API process.
+
+## Later ideas
+
+- Search / filter aliases
+- Edit or remove shortcuts
+- Pagination
+- Authn/authz
+- Container packaging
+- Broader automated coverage

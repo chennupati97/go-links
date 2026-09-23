@@ -1,48 +1,41 @@
 import { useEffect, useState } from "react";
-import { getLinks } from "./api";
-import { Link } from "./types";
-import CreateLinkForm from "./components/CreateLinkForm";
-import LinkTable from "./components/LinkTable";
+import { fetchShortcuts } from "./api";
+import { Shortcut } from "./types";
+import RegisterShortcutForm from "./components/RegisterShortcutForm";
+import ShortcutList from "./components/ShortcutList";
 
 function App() {
-  const [links, setLinks] = useState<Link[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [items, setItems] = useState<Shortcut[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  async function loadLinks() {
+  async function refreshShortcuts() {
     try {
-      setLoading(true);
-
-      const data = await getLinks();
-
-      setLinks(data);
-      setError("");
+      setIsLoading(true);
+      const data = await fetchShortcuts();
+      setItems(data);
+      setLoadError("");
     } catch {
-      setError("Failed to load links.");
+      setLoadError("Could not load shortcuts.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadLinks();
+    refreshShortcuts();
   }, []);
 
   return (
     <main>
-      <h1>🚀 Go Links</h1>
-      
-      <p>Create and manage internal URL shortcuts.</p>
+      <h1>JumpAlias</h1>
+      <p>Map short aliases to the URLs your team uses every day.</p>
 
-      <CreateLinkForm onLinkCreated={loadLinks} />
+      <RegisterShortcutForm onRegistered={refreshShortcuts} />
 
-      {loading && <p>Loading...</p>}
-
-      {error && <p>{error}</p>}
-
-      {!loading && !error && (
-        <LinkTable links={links} />
-      )}
+      {isLoading && <p>Loading shortcuts...</p>}
+      {loadError && <p>{loadError}</p>}
+      {!isLoading && !loadError && <ShortcutList items={items} />}
     </main>
   );
 }

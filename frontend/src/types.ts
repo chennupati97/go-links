@@ -1,11 +1,11 @@
-export interface Link {
+export interface Shortcut {
   id: number;
-  slug: string;
-  url: string;
-  createdAt: string;
+  alias: string;
+  destination: string;
+  registeredAt: string;
 }
 
-export interface CreateLinkRequest {
-  slug: string;
-  url: string;
+export interface RegisterShortcutRequest {
+  alias: string;
+  destination: string;
 }

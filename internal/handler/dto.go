@@ -3,35 +3,35 @@ package handler
 import (
 	"time"
 
-	"github.com/Naveen-kumar525/go-links/internal/model"
-	"github.com/Naveen-kumar525/go-links/internal/service"
+	"github.com/chennupati97/go-links/internal/model"
+	"github.com/chennupati97/go-links/internal/service"
 )
 
-type LinkHandler struct {
-	links *service.LinkService
+type ShortcutAPI struct {
+	manager *service.AliasManager
 }
 
-func NewLinkHandler(links *service.LinkService) *LinkHandler {
-	return &LinkHandler{links: links}
+func NewShortcutAPI(manager *service.AliasManager) *ShortcutAPI {
+	return &ShortcutAPI{manager: manager}
 }
 
-type createLinkRequest struct {
-	Slug string `json:"slug"`
-	URL  string `json:"url"`
+type registerPayload struct {
+	Alias       string `json:"alias"`
+	Destination string `json:"destination"`
 }
 
-type linkResponse struct {
-	ID        uint      `json:"id"`
-	Slug      string    `json:"slug"`
-	URL       string    `json:"url"`
-	CreatedAt time.Time `json:"createdAt"`
+type shortcutView struct {
+	ID           uint      `json:"id"`
+	Alias        string    `json:"alias"`
+	Destination  string    `json:"destination"`
+	RegisteredAt time.Time `json:"registeredAt"`
 }
 
-func toLinkResponse(link model.Link) linkResponse {
-	return linkResponse{
-		ID:        link.ID,
-		Slug:      link.Slug,
-		URL:       link.URL,
-		CreatedAt: link.CreatedAt,
+func mapShortcut(item model.Shortcut) shortcutView {
+	return shortcutView{
+		ID:           item.ID,
+		Alias:        item.Alias,
+		Destination:  item.Destination,
+		RegisteredAt: item.CreatedAt,
 	}
 }

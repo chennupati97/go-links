@@ -3,6 +3,6 @@ package repository
 import "errors"
 
 var (
-	ErrNotFound = errors.New("link not found")
-	ErrConflict = errors.New("slug already exists")
+	ErrMissing        = errors.New("shortcut not found")
+	ErrDuplicateAlias = errors.New("alias already taken")
 )

@@ -1,22 +1,24 @@
 import axios from "axios";
-import { CreateLinkRequest, Link } from "./types";
+import { RegisterShortcutRequest, Shortcut } from "./types";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+export const BACKEND_ORIGIN =
+  import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:8080";
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
+const client = axios.create({
+  baseURL: BACKEND_ORIGIN,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-export async function getLinks(): Promise<Link[]> {
-  const response = await api.get<Link[]>("/api/links");
+export async function fetchShortcuts(): Promise<Shortcut[]> {
+  const response = await client.get<Shortcut[]>("/api/shortcuts");
   return response.data;
 }
 
-export async function createLink(request: CreateLinkRequest): Promise<Link> {
-  const response = await api.post<Link>("/api/links", request);
+export async function registerShortcut(
+  request: RegisterShortcutRequest,
+): Promise<Shortcut> {
+  const response = await client.post<Shortcut>("/api/shortcuts", request);
   return response.data;
 }

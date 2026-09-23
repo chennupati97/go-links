@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestNormalizeSlug(t *testing.T) {
+func TestCleanAlias(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
@@ -22,42 +22,42 @@ func TestNormalizeSlug(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NormalizeSlug(tt.in)
+			got := CleanAlias(tt.in)
 			if got != tt.want {
-				t.Fatalf("NormalizeSlug(%q) = %q, want %q", tt.in, got, tt.want)
+				t.Fatalf("CleanAlias(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestValidateSlug(t *testing.T) {
+func TestCheckAlias(t *testing.T) {
 	tests := []struct {
 		name    string
-		slug    string
+		alias   string
 		wantErr string
 	}{
-		{name: "valid simple", slug: "docs"},
-		{name: "valid with hyphens", slug: "my-go-link"},
-		{name: "valid with numbers", slug: "link123"},
-		{name: "valid single char", slug: "a"},
-		{name: "valid max length", slug: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, // 50
-		{name: "empty", slug: "", wantErr: "slug is required"},
-		{name: "uppercase", slug: "Docs", wantErr: "slug may contain only lowercase letters, numbers and hyphens"},
-		{name: "underscore", slug: "my_link", wantErr: "slug may contain only lowercase letters, numbers and hyphens"},
-		{name: "space", slug: "my link", wantErr: "slug may contain only lowercase letters, numbers and hyphens"},
-		{name: "special chars", slug: "link!", wantErr: "slug may contain only lowercase letters, numbers and hyphens"},
-		{name: "too long", slug: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", wantErr: "slug may contain only lowercase letters, numbers and hyphens"}, // 51
+		{name: "valid simple", alias: "docs"},
+		{name: "valid with hyphens", alias: "my-go-link"},
+		{name: "valid with numbers", alias: "link123"},
+		{name: "valid single char", alias: "a"},
+		{name: "valid max length", alias: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		{name: "empty", alias: "", wantErr: "alias is required"},
+		{name: "uppercase", alias: "Docs", wantErr: "alias may contain only lowercase letters, numbers and hyphens"},
+		{name: "underscore", alias: "my_link", wantErr: "alias may contain only lowercase letters, numbers and hyphens"},
+		{name: "space", alias: "my link", wantErr: "alias may contain only lowercase letters, numbers and hyphens"},
+		{name: "special chars", alias: "link!", wantErr: "alias may contain only lowercase letters, numbers and hyphens"},
+		{name: "too long", alias: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", wantErr: "alias may contain only lowercase letters, numbers and hyphens"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateSlug(tt.slug)
-			assertValidationError(t, err, tt.wantErr)
+			err := CheckAlias(tt.alias)
+			assertInputError(t, err, tt.wantErr)
 		})
 	}
 }
 
-func TestValidateURL(t *testing.T) {
+func TestCheckTarget(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string
@@ -66,39 +66,39 @@ func TestValidateURL(t *testing.T) {
 		{name: "valid https", url: "https://example.com"},
 		{name: "valid http", url: "http://example.com/path"},
 		{name: "valid with query", url: "https://example.com/search?q=go"},
-		{name: "empty", url: "", wantErr: "url is required"},
-		{name: "no scheme", url: "example.com", wantErr: "invalid url"},
-		{name: "ftp scheme", url: "ftp://example.com", wantErr: "url must begin with http or https"},
-		{name: "javascript scheme", url: "javascript:alert(1)", wantErr: "url must begin with http or https"},
-		{name: "relative path", url: "/relative", wantErr: "url must begin with http or https"},
+		{name: "empty", url: "", wantErr: "destination is required"},
+		{name: "no scheme", url: "example.com", wantErr: "destination is not a valid URL"},
+		{name: "ftp scheme", url: "ftp://example.com", wantErr: "destination must use http or https"},
+		{name: "javascript scheme", url: "javascript:alert(1)", wantErr: "destination must use http or https"},
+		{name: "relative path", url: "/relative", wantErr: "destination must use http or https"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateURL(tt.url)
-			assertValidationError(t, err, tt.wantErr)
+			err := CheckTarget(tt.url)
+			assertInputError(t, err, tt.wantErr)
 		})
 	}
 }
 
-func TestAsError(t *testing.T) {
+func TestIsInputError(t *testing.T) {
 	tests := []struct {
-		name   string
-		err    error
-		wantOK bool
+		name    string
+		err     error
+		wantOK  bool
 		wantMsg string
 	}{
 		{
-			name:    "validation error",
-			err:     &Error{Message: "slug is required"},
+			name:    "input error",
+			err:     &InputError{Detail: "alias is required"},
 			wantOK:  true,
-			wantMsg: "slug is required",
+			wantMsg: "alias is required",
 		},
 		{
-			name:   "wrapped validation error",
-			err:    errors.Join(&Error{Message: "invalid url"}),
-			wantOK: true,
-			wantMsg: "invalid url",
+			name:    "joined input error",
+			err:     errors.Join(&InputError{Detail: "destination is not a valid URL"}),
+			wantOK:  true,
+			wantMsg: "destination is not a valid URL",
 		},
 		{
 			name:   "plain error",
@@ -114,24 +114,24 @@ func TestAsError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := AsError(tt.err)
+			got, ok := IsInputError(tt.err)
 			if ok != tt.wantOK {
-				t.Fatalf("AsError() ok = %v, want %v", ok, tt.wantOK)
+				t.Fatalf("IsInputError() ok = %v, want %v", ok, tt.wantOK)
 			}
 			if !tt.wantOK {
 				if got != nil {
-					t.Fatalf("AsError() got = %#v, want nil", got)
+					t.Fatalf("IsInputError() got = %#v, want nil", got)
 				}
 				return
 			}
-			if got == nil || got.Message != tt.wantMsg {
-				t.Fatalf("AsError() = %#v, want Message %q", got, tt.wantMsg)
+			if got == nil || got.Detail != tt.wantMsg {
+				t.Fatalf("IsInputError() = %#v, want Detail %q", got, tt.wantMsg)
 			}
 		})
 	}
 }
 
-func assertValidationError(t *testing.T, err error, wantMsg string) {
+func assertInputError(t *testing.T, err error, wantMsg string) {
 	t.Helper()
 	if wantMsg == "" {
 		if err != nil {
@@ -142,11 +142,11 @@ func assertValidationError(t *testing.T, err error, wantMsg string) {
 	if err == nil {
 		t.Fatalf("expected error %q, got nil", wantMsg)
 	}
-	vErr, ok := AsError(err)
+	inputErr, ok := IsInputError(err)
 	if !ok {
-		t.Fatalf("expected *validation.Error, got %T: %v", err, err)
+		t.Fatalf("expected *InputError, got %T: %v", err, err)
 	}
-	if vErr.Message != wantMsg {
-		t.Fatalf("error message = %q, want %q", vErr.Message, wantMsg)
+	if inputErr.Detail != wantMsg {
+		t.Fatalf("error detail = %q, want %q", inputErr.Detail, wantMsg)
 	}
 }

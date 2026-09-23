@@ -3,17 +3,17 @@ package main
 import (
 	"log"
 
-	"github.com/Naveen-kumar525/go-links/internal/di"
+	"github.com/chennupati97/go-links/internal/di"
 )
 
 func main() {
-	app, err := di.New()
+	app, err := di.Bootstrap()
 	if err != nil {
-		log.Fatalf("failed to initialize application: %v", err)
+		log.Fatalf("bootstrap failed: %v", err)
 	}
 
-	log.Printf("Server started on %s", app.Config.Addr)
-	if err := app.Router.Run(app.Config.Addr); err != nil {
+	log.Printf("JumpAlias listening on %s", app.Settings.ListenAddr)
+	if err := app.Engine.Run(app.Settings.ListenAddr); err != nil {
 		log.Fatal(err)
 	}
 }

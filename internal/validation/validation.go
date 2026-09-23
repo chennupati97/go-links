@@ -7,50 +7,50 @@ import (
 	"strings"
 )
 
-var slugRegex = regexp.MustCompile(`^[a-z0-9-]{1,50}$`)
+var aliasPattern = regexp.MustCompile(`^[a-z0-9-]{1,50}$`)
 
-// Error represents a client input validation failure.
-type Error struct {
-	Message string
+// InputError is returned when client-provided data fails checks.
+type InputError struct {
+	Detail string
 }
 
-func (e *Error) Error() string {
-	return e.Message
+func (e *InputError) Error() string {
+	return e.Detail
 }
 
-func NormalizeSlug(slug string) string {
-	return strings.TrimSpace(strings.ToLower(slug))
+func CleanAlias(value string) string {
+	return strings.TrimSpace(strings.ToLower(value))
 }
 
-func ValidateSlug(slug string) error {
-	if slug == "" {
-		return &Error{Message: "slug is required"}
+func CheckAlias(value string) error {
+	if value == "" {
+		return &InputError{Detail: "alias is required"}
 	}
-	if !slugRegex.MatchString(slug) {
-		return &Error{Message: "slug may contain only lowercase letters, numbers and hyphens"}
+	if !aliasPattern.MatchString(value) {
+		return &InputError{Detail: "alias may contain only lowercase letters, numbers and hyphens"}
 	}
 	return nil
 }
 
-func ValidateURL(raw string) error {
+func CheckTarget(raw string) error {
 	if raw == "" {
-		return &Error{Message: "url is required"}
+		return &InputError{Detail: "destination is required"}
 	}
 
-	u, err := url.ParseRequestURI(raw)
+	parsed, err := url.ParseRequestURI(raw)
 	if err != nil {
-		return &Error{Message: "invalid url"}
+		return &InputError{Detail: "destination is not a valid URL"}
 	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return &Error{Message: "url must begin with http or https"}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return &InputError{Detail: "destination must use http or https"}
 	}
 	return nil
 }
 
-func AsError(err error) (*Error, bool) {
-	var v *Error
-	if errors.As(err, &v) {
-		return v, true
+func IsInputError(err error) (*InputError, bool) {
+	var inputErr *InputError
+	if errors.As(err, &inputErr) {
+		return inputErr, true
 	}
 	return nil, false
 }

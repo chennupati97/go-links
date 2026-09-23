@@ -4,70 +4,70 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Naveen-kumar525/go-links/internal/handler"
-	"github.com/Naveen-kumar525/go-links/internal/repository"
-	"github.com/Naveen-kumar525/go-links/internal/router"
-	"github.com/Naveen-kumar525/go-links/internal/service"
+	"github.com/chennupati97/go-links/internal/handler"
+	"github.com/chennupati97/go-links/internal/repository"
+	"github.com/chennupati97/go-links/internal/router"
+	"github.com/chennupati97/go-links/internal/service"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// Config holds process-level settings loaded once by the DI container.
-type Config struct {
-	Addr   string
-	DBPath string
+// Settings holds process-level runtime options.
+type Settings struct {
+	ListenAddr   string
+	DatabaseFile string
 }
 
-func LoadConfig() Config {
-	addr := envOr("PORT", "8080")
+func ReadSettings() Settings {
+	addr := lookupEnv("LISTEN_PORT", "8080")
 	if len(addr) > 0 && addr[0] != ':' {
 		addr = ":" + addr
 	}
 
-	return Config{
-		Addr:   addr,
-		DBPath: envOr("DB_PATH", "golinks.db"),
+	return Settings{
+		ListenAddr:   addr,
+		DatabaseFile: lookupEnv("SQLITE_FILE", "jumpalias.db"),
 	}
 }
 
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func lookupEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
 	return fallback
 }
 
-// Container is the single composition root that constructs and injects dependencies.
-type Container struct {
-	Config Config
-	DB     *gorm.DB
+// App is the composition root that wires dependencies together.
+type App struct {
+	Settings Settings
+	DB       *gorm.DB
 
-	LinkRepo    repository.LinkRepository
-	LinkService *service.LinkService
-	LinkHandler *handler.LinkHandler
+	Store   repository.ShortcutStore
+	Manager *service.AliasManager
+	API     *handler.ShortcutAPI
 
-	Router *gin.Engine
+	Engine *gin.Engine
 }
 
-// New builds the dependency graph and HTTP router.
-func New() (*Container, error) {
-	cfg := LoadConfig()
+// Bootstrap constructs the full application graph.
+func Bootstrap() (*App, error) {
+	settings := ReadSettings()
 
-	db, err := repository.OpenDB(cfg.DBPath)
+	conn, err := repository.ConnectSQLite(settings.DatabaseFile)
 	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
+		return nil, fmt.Errorf("connect sqlite: %w", err)
 	}
 
-	linkRepo := repository.NewGormLinkRepository(db)
-	linkService := service.NewLinkService(linkRepo)
-	linkHandler := handler.NewLinkHandler(linkService)
+	store := repository.NewSQLiteShortcutStore(conn)
+	manager := service.NewAliasManager(store)
+	api := handler.NewShortcutAPI(manager)
 
-	return &Container{
-		Config:      cfg,
-		DB:          db,
-		LinkRepo:    linkRepo,
-		LinkService: linkService,
-		LinkHandler: linkHandler,
-		Router:      router.New(linkHandler),
+	return &App{
+		Settings: settings,
+		DB:       conn,
+		Store:    store,
+		Manager:  manager,
+		API:      api,
+		Engine:   router.BuildEngine(api),
 	}, nil
 }

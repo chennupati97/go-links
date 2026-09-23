@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Naveen-kumar525/go-links/internal/handler"
-	"github.com/Naveen-kumar525/go-links/internal/model"
-	"github.com/Naveen-kumar525/go-links/internal/repository"
-	"github.com/Naveen-kumar525/go-links/internal/service"
+	"github.com/chennupati97/go-links/internal/handler"
+	"github.com/chennupati97/go-links/internal/model"
+	"github.com/chennupati97/go-links/internal/repository"
+	"github.com/chennupati97/go-links/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,44 +18,44 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-type stubRepo struct{}
+type emptyStore struct{}
 
-func (stubRepo) Create(context.Context, *model.Link) error { return nil }
-func (stubRepo) FindBySlug(context.Context, string) (*model.Link, error) {
-	return nil, repository.ErrNotFound
+func (emptyStore) Save(context.Context, *model.Shortcut) error { return nil }
+func (emptyStore) GetByAlias(context.Context, string) (*model.Shortcut, error) {
+	return nil, repository.ErrMissing
 }
-func (stubRepo) List(context.Context) ([]model.Link, error) { return nil, nil }
+func (emptyStore) All(context.Context) ([]model.Shortcut, error) { return nil, nil }
 
-func TestNew_Routes(t *testing.T) {
-	h := handler.NewLinkHandler(service.NewLinkService(stubRepo{}))
-	engine := New(h)
+func TestBuildEngine_Routes(t *testing.T) {
+	api := handler.NewShortcutAPI(service.NewAliasManager(emptyStore{}))
+	engine := BuildEngine(api)
 
 	tests := []struct {
 		name       string
 		method     string
 		path       string
 		wantStatus int
-		wantJSON   map[string]string
+		wantJSON   map[string]any
 	}{
 		{
-			name:       "health",
+			name:       "ready",
 			method:     http.MethodGet,
-			path:       "/health",
+			path:       "/ready",
 			wantStatus: http.StatusOK,
-			wantJSON:   map[string]string{"status": "ok"},
+			wantJSON:   map[string]any{"ready": true},
 		},
 		{
-			name:       "list links",
+			name:       "index shortcuts",
 			method:     http.MethodGet,
-			path:       "/api/links",
+			path:       "/api/shortcuts",
 			wantStatus: http.StatusOK,
 		},
 		{
-			name:       "redirect missing slug",
+			name:       "follow missing alias",
 			method:     http.MethodGet,
-			path:       "/go/missing",
+			path:       "/j/missing",
 			wantStatus: http.StatusNotFound,
-			wantJSON:   map[string]string{"error": "shortcut not found"},
+			wantJSON:   map[string]any{"error": "alias not found"},
 		},
 		{
 			name:       "unknown route",
@@ -77,13 +77,13 @@ func TestNew_Routes(t *testing.T) {
 			if tt.wantJSON == nil {
 				return
 			}
-			var got map[string]string
+			var got map[string]any
 			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 				t.Fatalf("decode body: %v", err)
 			}
 			for k, v := range tt.wantJSON {
 				if got[k] != v {
-					t.Fatalf("json[%q] = %q, want %q", k, got[k], v)
+					t.Fatalf("json[%q] = %#v, want %#v", k, got[k], v)
 				}
 			}
 		})

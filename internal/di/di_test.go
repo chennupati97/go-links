@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestEnvOr(t *testing.T) {
+func TestLookupEnv(t *testing.T) {
 	tests := []struct {
 		name     string
 		key      string
@@ -12,84 +12,73 @@ func TestEnvOr(t *testing.T) {
 		fallback string
 		want     string
 	}{
-		{name: "uses env when set", key: "GO_LINKS_TEST_ENV_OR", set: "from-env", fallback: "fallback", want: "from-env"},
-		{name: "uses fallback when unset", key: "GO_LINKS_TEST_ENV_OR_MISSING", set: "", fallback: "fallback", want: "fallback"},
-		{name: "uses fallback when empty", key: "GO_LINKS_TEST_ENV_OR_EMPTY", set: "", fallback: "fallback", want: "fallback"},
+		{name: "uses env when set", key: "JUMPALIAS_TEST_LOOKUP", set: "from-env", fallback: "fallback", want: "from-env"},
+		{name: "uses fallback when empty", key: "JUMPALIAS_TEST_LOOKUP_EMPTY", set: "", fallback: "fallback", want: "fallback"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv(tt.key, tt.set)
-			if tt.set == "" {
-				t.Setenv(tt.key, "")
-			}
-			got := envOr(tt.key, tt.fallback)
+			got := lookupEnv(tt.key, tt.fallback)
 			if got != tt.want {
-				t.Fatalf("envOr(%q, %q) = %q, want %q", tt.key, tt.fallback, got, tt.want)
+				t.Fatalf("lookupEnv(%q, %q) = %q, want %q", tt.key, tt.fallback, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestLoadConfig(t *testing.T) {
+func TestReadSettings(t *testing.T) {
 	tests := []struct {
-		name       string
-		port       *string
-		dbPath     *string
-		wantAddr   string
-		wantDBPath string
+		name             string
+		port             *string
+		dbFile           *string
+		wantListenAddr   string
+		wantDatabaseFile string
 	}{
 		{
-			name:       "defaults",
-			wantAddr:   ":8080",
-			wantDBPath: "golinks.db",
+			name:             "defaults",
+			wantListenAddr:   ":8080",
+			wantDatabaseFile: "jumpalias.db",
 		},
 		{
-			name:       "port without colon",
-			port:       strPtr("9090"),
-			wantAddr:   ":9090",
-			wantDBPath: "golinks.db",
+			name:             "port without colon",
+			port:             strPtr("9090"),
+			wantListenAddr:   ":9090",
+			wantDatabaseFile: "jumpalias.db",
 		},
 		{
-			name:       "port with colon",
-			port:       strPtr(":7070"),
-			wantAddr:   ":7070",
-			wantDBPath: "golinks.db",
+			name:             "port with colon",
+			port:             strPtr(":7070"),
+			wantListenAddr:   ":7070",
+			wantDatabaseFile: "jumpalias.db",
 		},
 		{
-			name:       "custom db path",
-			dbPath:     strPtr("/tmp/custom.db"),
-			wantAddr:   ":8080",
-			wantDBPath: "/tmp/custom.db",
-		},
-		{
-			name:       "port and db path",
-			port:       strPtr("3000"),
-			dbPath:     strPtr("data/app.db"),
-			wantAddr:   ":3000",
-			wantDBPath: "data/app.db",
+			name:             "custom sqlite file",
+			dbFile:           strPtr("/tmp/custom.db"),
+			wantListenAddr:   ":8080",
+			wantDatabaseFile: "/tmp/custom.db",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.port != nil {
-				t.Setenv("PORT", *tt.port)
+				t.Setenv("LISTEN_PORT", *tt.port)
 			} else {
-				t.Setenv("PORT", "")
+				t.Setenv("LISTEN_PORT", "")
 			}
-			if tt.dbPath != nil {
-				t.Setenv("DB_PATH", *tt.dbPath)
+			if tt.dbFile != nil {
+				t.Setenv("SQLITE_FILE", *tt.dbFile)
 			} else {
-				t.Setenv("DB_PATH", "")
+				t.Setenv("SQLITE_FILE", "")
 			}
 
-			cfg := LoadConfig()
-			if cfg.Addr != tt.wantAddr {
-				t.Fatalf("Addr = %q, want %q", cfg.Addr, tt.wantAddr)
+			settings := ReadSettings()
+			if settings.ListenAddr != tt.wantListenAddr {
+				t.Fatalf("ListenAddr = %q, want %q", settings.ListenAddr, tt.wantListenAddr)
 			}
-			if cfg.DBPath != tt.wantDBPath {
-				t.Fatalf("DBPath = %q, want %q", cfg.DBPath, tt.wantDBPath)
+			if settings.DatabaseFile != tt.wantDatabaseFile {
+				t.Fatalf("DatabaseFile = %q, want %q", settings.DatabaseFile, tt.wantDatabaseFile)
 			}
 		})
 	}
